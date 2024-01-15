@@ -1,0 +1,48 @@
+# Importing the libraries
+import MetaTrader5 as mt5
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Connecting to MetaTrader 5
+if not mt5.initialize():
+    print("initialize() failed, error code =", mt5.last_error())
+    quit()
+
+# Fetching historical data for a currency pair
+symbol = "EURUSDm"
+rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M1, 0, 100)
+
+# Disconnect from MetaTrader 5
+mt5.shutdown()
+
+# Check if rates were successfully fetched
+if rates is None:
+    print(f"No data for {symbol}.")
+else:
+    # Convert the data to a pandas DataFrame and display
+    data = pd.DataFrame(rates)
+    data['time'] = pd.to_datetime(data['time'], unit='s')
+    print("\nHistorical Data for", symbol)
+    print(data)
+
+    # Basic Data Manipulation with Pandas
+    data['SMA_5'] = data['close'].rolling(window=5).mean()
+    data['SMA_20'] = data['close'].rolling(window=20).mean()    
+
+    # Basic Data Visualization with Matplotlib
+    plt.figure(figsize=(10, 5))
+    plt.plot(data['time'], data['close'], label='Close Price', color='blue')
+    plt.plot(data['time'], data['SMA_5'], label='5-period SMA', color='orange')
+    plt.plot(data['time'], data['SMA_20'], label='20-period SMA', color='red')
+    plt.title(f'{symbol} Close Price and SMA')
+    plt.xlabel('Time')
+    plt.ylabel('Price')
+    plt.legend()
+    plt.show()
+
+    # Simple NumPy example: Calculating the return
+    close_prices = data['close'].to_numpy()
+    returns = np.diff(close_prices) / close_prices[:-1]
+    print("\nPrice Returns:")
+    print(returns)
