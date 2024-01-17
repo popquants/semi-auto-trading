@@ -1,0 +1,42 @@
+import MetaTrader5 as mt5
+import pandas as pd
+import songline
+import time
+
+# Initialize MetaTrader 5 API
+mt5.initialize()
+
+# Define the symbol and timeframe
+symbol = "BTCUSDm"
+timeframe = mt5.TIMEFRAME_M5
+
+# Define the periods for SMA5 and SMA50
+period_sma5 = 5
+period_sma50 = 50
+
+# Initialize Songline with your Line API token
+line_token = "PUT_YOUR_LINE_TOKEN_HERE"
+line = songline.sendline.Sendline(line_token)
+
+while True:
+    # Fetch the most recent data point
+    rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, 1)
+    latest_close = rates[0]['close']
+
+    # Fetch historical data for SMA calculation
+    historical_rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, period_sma50)
+    df = pd.DataFrame(historical_rates)
+    df['SMA5'] = df['close'].rolling(period_sma5).mean()
+    df['SMA50'] = df['close'].rolling(period_sma50).mean()
+
+    # Check for buy and sell signals
+    if df['SMA5'].iloc[-1] > df['SMA50'].iloc[-1]:
+        line.sendtext("Buy alert: SMA5 crossed above SMA50.")
+    elif df['SMA5'].iloc[-1] < df['SMA50'].iloc[-1]:
+        line.sendtext("Sell alert: SMA50 crossed above SMA5.")
+
+    # Wait for 5 minutes before checking again
+    time.sleep(300)  # 300 seconds = 5 minutes
+
+# Close the MetaTrader 5 connection (will never be reached in this infinite loop)
+mt5.shutdown()
