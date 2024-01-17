@@ -1,0 +1,53 @@
+import MetaTrader5 as mt5
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+
+# Initialize MetaTrader 5 connection
+if not mt5.initialize():
+    print("MetaTrader 5 initialization failed")
+    exit(1)
+
+# Define the symbols for XAUUSDm and XAGUSDm
+symbols = ["XAUUSDm", "XAGUSDm", "USDJPYm", "NZDUSDm", "EURUSDm", "BTCUSDm"]
+
+# Set the timeframe to 5 minutes
+timeframe = mt5.TIMEFRAME_M5  # 5 minutes
+
+# Define the number of bars you want to retrieve
+num_bars = 100  # Adjust this as needed
+
+# Define the start and end date and time for the data range in minutes
+end_time = datetime.now()
+start_time = end_time - timedelta(minutes=num_bars * 5)  # Adjust the number of bars as needed
+
+# Retrieve historical data for the 'close' prices of each symbol
+data = {}
+for symbol in symbols:
+    rates = mt5.copy_rates_range(symbol, timeframe, start_time, end_time)
+    if rates is not None:
+        data[symbol] = pd.DataFrame(rates)['close']
+    else:
+        print(f"Failed to retrieve data for symbol: {symbol}")
+
+# Check if data was successfully retrieved for both symbols
+if len(data) != len(symbols):
+    print("Some symbols failed to retrieve data. Check the reasons above.")
+    mt5.shutdown()
+    exit(1)
+
+# Create a dataframe with the close prices
+df = pd.DataFrame(data)
+
+# Calculate the correlation matrix
+correlation_matrix = df.corr()
+
+# Create a correlation heatmap
+plt.figure(figsize=(8, 6))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
+plt.title('Correlation Heatmap between Close Prices of XAUUSDm and XAGUSDm (5-Minute Data)')
+plt.show()
+
+# Shutdown MetaTrader 5 connection
+mt5.shutdown()
