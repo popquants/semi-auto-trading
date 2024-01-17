@@ -1,0 +1,43 @@
+import MetaTrader5 as mt5
+import pandas as pd
+import songline
+import time
+
+# Initialize MetaTrader 5 API
+mt5.initialize()
+
+# Define the symbol and timeframe
+symbol = "AUDUSDm"
+timeframe = mt5.TIMEFRAME_M1  # รับ Time frame ได้ครับ
+
+# Define the Bollinger Bands parameters
+period = 20  # Bollinger Bands period ตั้งค่าเฉลี่ยที่ต้องการใช้ในการคำนวน Bollinger band
+std_multiplier = 2  # Standard deviation multiplier ตั้งค่า Standard deviation 1-3
+
+# Initialize Songline with your Line API token
+line_token = "PUT_YOUR_LINE_TOKEN_HERE"
+line = songline.sendline.Sendline(line_token)
+
+while True:
+    # Fetch the most recent data point
+    rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, 1)
+    latest_close = rates[0]['close']
+
+    # Fetch historical data for Bollinger Bands calculation
+    historical_rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, period)
+    df = pd.DataFrame(historical_rates)
+    df['SMA'] = df['close'].rolling(period).mean()
+    df['Upper'] = df['SMA'] + (std_multiplier * df['close'].rolling(period).std())
+    df['Lower'] = df['SMA'] - (std_multiplier * df['close'].rolling(period).std())
+
+    # Check for buy and sell signals
+    if latest_close < df['Lower'].iloc[-1]:
+        line.sendtext("Buy alert: Close price is below the lower Bollinger Band.")
+    elif latest_close > df['Upper'].iloc[-1]:
+        line.sendtext("Sell alert: Close price is above the upper Bollinger Band.")
+
+    # Wait for 5 minutes before checking again
+    time.sleep(60)  # 60 seconds = 1 minutes ใส่จำนวน
+
+# Close the MetaTrader 5 connection (will never be reached in this infinite loop)
+mt5.shutdown()
