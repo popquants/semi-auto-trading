@@ -1,0 +1,79 @@
+import MetaTrader5 as mt5
+import numpy as np
+from datetime import datetime, timedelta
+from songline import Sendline
+import time
+
+# Define the symbols to monitor
+symbols = ["USOILm"]
+
+# Line Notify access token
+line_access_token = 'YOUR_TOKEN_HERE' 
+
+while True:
+    try:
+        # Initialize MetaTrader 5
+        if not mt5.initialize():
+            print("MetaTrader 5 initialization failed.")
+            quit()
+
+        # Calculate the start and end times for the last 1440 minutes
+        end_time = datetime.now()
+        start_time = end_time - timedelta(minutes=1440)
+
+        # Iterate over each symbol
+        for symbol in symbols:
+            # Request historical 1-minute data for the specified symbol and time range
+            rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_M1, start_time, end_time)
+
+            if rates is not None and len(rates) > 0:
+                # Extract the close prices from the returned data
+                close_prices = [bar['close'] for bar in rates]
+
+                # Calculate returns
+                returns = np.diff(close_prices) / close_prices[:-1]
+
+                # Calculate the 2 standard deviations (2SD) of returns
+                std_dev = np.std(returns) * 2
+
+
+                ###### ADJUST LASTEST RETURN HERE ###### [-60]
+                # Get the latest return
+                latest_return = returns[-60] if len(returns) > 0 else 0.0
+
+                # Calculate -2SD return value
+                minus_2sd_return = -std_dev
+
+                # Get the current price (last close price)
+                current_price = close_prices[-1]
+
+                # Combine the -2SD return and latest return in a single message
+                message = f"{symbol} -2SD Return: {minus_2sd_return:.6f}, Latest Return: {latest_return:.6f}"
+
+                # Compare the latest return with the 2SD return
+                if latest_return > std_dev:
+                    # Send additional alert message to Line for Buy signal
+                    buy_message = f"{symbol} 2SD Buy signal!"
+                    line = Sendline(line_access_token)
+                    line.sendtext(buy_message)
+                    print(f"Sent Line alert message: {buy_message}")
+                elif latest_return < minus_2sd_return:
+                    # Send SELL signal to Line for -2SD Sell signal
+                    sell_message = f"{symbol} -2SD SELL signal!"
+                    line = Sendline(line_access_token)
+                    line.sendtext(sell_message)
+                    print(f"Sent Line alert message: {sell_message}")
+                else:
+                    print(f"{symbol}: No significant signal detected.")
+
+            else:
+                print(f"No 1-minute data available for {symbol} in the specified time range.")
+
+    except Exception as e:
+        print(f"MetaTrader 5 error: {e}")
+    finally:
+        # Deinitialize MetaTrader 5
+        mt5.shutdown()
+
+    # Sleep for 60 minutes before the next iteration
+    time.sleep(3600)
