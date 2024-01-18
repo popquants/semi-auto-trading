@@ -1,0 +1,57 @@
+import MetaTrader5 as mt5
+import pandas as pd
+from datetime import datetime
+from songline import Sendline
+import time
+
+# Your LINE Token
+line_token = 'YOUR_LINE_TOKEN_HERE'
+messenger = Sendline(line_token)
+
+# Initialize MetaTrader 5
+if not mt5.initialize():
+    print("initialize() failed, error code =", mt5.last_error())
+    quit()
+
+# Function to fetch data and generate signal
+def fetch_data_and_generate_signal(symbols):
+    rankings = {}
+    for symbol in symbols:
+        rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_H1, datetime.now() - pd.Timedelta('25 hours'), datetime.now())
+        if rates is not None:
+            df = pd.DataFrame(rates)
+            # Calculate returns
+            last_24hr_return = (df.iloc[-2]['close'] - df.iloc[0]['open']) / df.iloc[0]['open']
+            last_1hr_return = (df.iloc[-1]['close'] - df.iloc[-2]['close']) / df.iloc[-2]['close']
+            net_return = last_24hr_return - last_1hr_return
+            rankings[symbol] = net_return
+    
+    sorted_rankings = sorted(rankings.items(), key=lambda x: x[1])
+    long_positions = sorted_rankings[:2]  # Two with the lowest returns
+    short_positions = sorted_rankings[-2:]  # Two with the highest returns
+    return long_positions, short_positions
+
+def send_signal_message(long_positions, short_positions):
+    message = "Trading Signal:\n"
+    message += "Long Positions: " + ", ".join([f"{symbol} ({return_:.2f})" for symbol, return_ in long_positions]) + "\n"
+    message += "Short Positions: " + ", ".join([f"{symbol} ({return_:.2f})" for symbol, return_ in short_positions])
+    messenger.sendtext(message)
+
+# Main Loop
+symbols = ["LTCUSDm", "ETHUSDm", "BTCUSDm"]
+last_execution_time = None
+
+while True:
+    current_time = datetime.now()
+
+    # Check if the current time is at the start of a new hour (HH:00:00)
+    if current_time.minute == 0 and current_time.second == 0 and (last_execution_time is None or current_time.hour != last_execution_time.hour):
+        long_positions, short_positions = fetch_data_and_generate_signal(symbols)
+        send_signal_message(long_positions, short_positions)
+        last_execution_time = current_time
+        time.sleep(1)  # Sleep to avoid multiple executions in the same second
+    else:
+        time.sleep(0.1)  # Sleep for a short time before checking again
+
+# Shutdown MT5 connection
+mt5.shutdown()
