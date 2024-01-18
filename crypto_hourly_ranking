@@ -38,7 +38,7 @@ def send_signal_message(long_positions, short_positions):
     messenger.sendtext(message)
 
 # Main Loop
-symbols = ["LTCUSDm", "ETHUSDm", "BTCUSDm"]
+symbols = ["LTCUSDm", "ETHUSDm", "BTCUSDm", "BTCAUDm", "BTCXAUm", "BTCTHBm"]
 last_execution_time = None
 
 while True:
