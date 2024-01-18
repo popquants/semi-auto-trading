@@ -1,0 +1,56 @@
+### Simple trading strategy
+### The investment universe consists of one cryptocurrency – Bitcoin. Daily Bitcoin prices are obtained from the site Coindesk.com. We construct an equally-weight strategy of moving averages. Firstly, compute 20-day moving average at day t as a sum of prices for the previous 20 days (day t is excluded) divided by 20. If the price of bitcoin at time t-1 divided by the 20-day moving average is larger than 1, buy the bitcoin. If it is lower than 1, sell the bitcoin and invest in a risk-free rate at day t. We do the same for 1, 2, 4 and 10 days. The overall strategy is constructed by equally-weighting the five sub-strategies. The final strategy is rebalanced daily, and only 10% of the portfolio is actively traded.
+
+import MetaTrader5 as mt5
+import pandas as pd
+from datetime import datetime, timedelta
+import time
+from songline import Sendline
+
+# Set your LINE Token
+line_token = 'YOUR_LINE_TOKEN_HERE'
+messenger = Sendline(line_token)
+
+# Function to fetch BTCUSD data and generate signal
+def fetch_and_generate_signal():
+    if not mt5.initialize():
+        print("initialize() failed, error code =", mt5.last_error())
+        mt5.shutdown()
+        return
+
+    btcusd_rates = mt5.copy_rates_from_pos("BTCUSDm", mt5.TIMEFRAME_D1, 0, 50)
+    mt5.shutdown()
+
+    df = pd.DataFrame(btcusd_rates)
+    df['time'] = pd.to_datetime(df['time'], unit='s')
+    df.set_index('time', inplace=True)
+    df['MA_20'] = df['close'].rolling(window=20).mean()
+
+    latest_price = df.iloc[-1]['close']
+    ma_20 = df.iloc[-1]['MA_20']
+    signal = ""
+
+    if latest_price / ma_20 > 1:
+        signal = "Buy"
+    elif latest_price / ma_20 < 1:
+        signal = "Sell"
+
+    if signal:
+        return f"Signal: {signal} - BTCUSD Price: {latest_price}"
+    else:
+        return None
+
+# Run the loop for 23 hours
+start_time = datetime.now()
+end_time = start_time + timedelta(hours=23)
+
+while datetime.now() < end_time:
+    # Check if the current time is 00:00 or the start of a new day
+    if datetime.now().hour == 0 and datetime.now().minute == 0:
+        signal_message = fetch_and_generate_signal()
+        if signal_message:
+            messenger.sendtext(signal_message)
+        time.sleep(60)  # Wait for a minute to avoid multiple messages at 00:00
+    time.sleep(60)  # Check every minute
+
+print("23-hour trading check cycle completed.")
