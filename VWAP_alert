@@ -1,0 +1,65 @@
+import MetaTrader5 as mt5
+import pandas as pd
+from datetime import datetime, timedelta
+import time
+from songline import Sendline  # Make sure to install this library
+
+# Initialize MetaTrader 5 connection
+if not mt5.initialize():
+    print("MetaTrader 5 initialization failed")
+    exit(1)
+
+# Define the symbol for XAUUSDm
+symbol = "XAUUSDm"
+
+# Set the timeframe to 1 minute
+timeframe = mt5.TIMEFRAME_M1  # 1 minute
+
+# Define the interval for calculating VWAP (10 minutes)
+vwap_interval = 10 * 60  # 10 minutes in seconds
+
+# Start time for VWAP calculation
+start_time = datetime.now()
+
+# Initialize variables for VWAP calculation
+total_volume = 0
+vwap = 0
+
+# Initialize Sendline with your token (replace 'YOUR_TOKEN' with your actual token)
+sendline = Sendline('PUT_YOUR_LINE_TOKEN_HERE')
+
+try:
+    while True:
+        # Calculate the VWAP every 10 minutes
+        current_time = datetime.now()
+        elapsed_time = (current_time - start_time).total_seconds()
+
+        if elapsed_time >= vwap_interval:
+            # Calculate VWAP from the last 10 minutes of 1-minute data
+            end_time = current_time
+            start_time = end_time - timedelta(seconds=vwap_interval)
+            
+            # Retrieve historical data for XAUUSDm on a 1-minute timeframe within the specified range
+            rates = mt5.copy_rates_range(symbol, timeframe, start_time, end_time)
+            
+            if rates is not None:
+                # Create a DataFrame from the retrieved data
+                df = pd.DataFrame(rates)
+                
+                # Calculate VWAP
+                df['value'] = df['close'] * df['tick_volume']
+                total_volume = df['tick_volume'].sum()
+                vwap = df['value'].sum() / total_volume
+                
+                # Print and send the VWAP
+                print(f"VWAP for the last 10 minutes: {vwap:.4f}")
+                sendline.sendtext(f"VWAP for the last 10 minutes: {vwap:.4f}")
+            else:
+                print(f"Failed to retrieve data for symbol: {symbol}")
+            
+        # Sleep for 1 minute before checking again
+        time.sleep(60)
+
+except KeyboardInterrupt:
+    # Shutdown MetaTrader 5 connection on interruption
+    mt5.shutdown()
