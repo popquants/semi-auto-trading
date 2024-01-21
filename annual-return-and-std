@@ -1,0 +1,86 @@
+import MetaTrader5 as mt5
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import norm
+from datetime import datetime
+
+# Function to initialize MetaTrader 5
+def initialize_mt5():
+    if not mt5.initialize():
+        print("initialize() failed, error code =", mt5.last_error())
+        quit()
+
+# Function to fetch historical data
+def fetch_historical_data(symbol, years_back):
+    today = datetime.now()
+    past = today.replace(year=today.year - years_back)
+    rates = mt5.copy_rates_range(symbol, mt5.TIMEFRAME_D1, past, today)
+    return pd.DataFrame(rates)
+
+# Function to calculate daily returns
+def calculate_daily_returns(dataframe):
+    dataframe['returns'] = dataframe['close'].pct_change()
+    return dataframe
+
+# Function to calculate mean and standard deviation of returns
+def calculate_mean_std(dataframe):
+    mean_return = dataframe['returns'].mean()
+    std_return = dataframe['returns'].std()
+    return mean_return, std_return
+
+# Function to calculate yearly return and standard deviation
+def calculate_yearly_stats(dataframe, trading_days=252):
+    yearly_return = (1 + dataframe['returns']).prod() ** (trading_days / len(dataframe)) - 1
+    yearly_std = dataframe['returns'].std() * np.sqrt(trading_days)
+    return yearly_return, yearly_std
+
+# Initialize MetaTrader 5
+initialize_mt5()
+
+# Fetch historical data for XAUUSDm
+data = fetch_historical_data("XAUUSDm", 10)
+
+# Calculate daily returns
+data = calculate_daily_returns(data)
+
+# Calculate mean and standard deviation
+mean_return, std_return = calculate_mean_std(data)
+
+# Calculate yearly return and standard deviation
+yearly_return, yearly_std = calculate_yearly_stats(data)
+
+# Plotting
+plt.figure(figsize=(10, 6))
+plt.hist(data['returns'].dropna(), bins=50, density=True, alpha=0.6, color='g')
+
+# Normal distribution curve
+xmin, xmax = plt.xlim()
+x = np.linspace(xmin, xmax, 100)
+p = norm.pdf(x, mean_return, std_return)
+plt.plot(x, p, 'k', linewidth=2)
+
+# Add vertical lines for standard deviations
+for i in range(1, 4):
+    plt.axvline(mean_return + i * std_return, color='red', linestyle='dashed', linewidth=1)
+    plt.axvline(mean_return - i * std_return, color='blue', linestyle='dashed', linewidth=1)
+
+# Adding text for standard deviations
+plt.text(mean_return + std_return, plt.ylim()[1]*0.5, '1 SD', color='red')
+plt.text(mean_return - std_return, plt.ylim()[1]*0.5, '-1 SD', color='blue')
+plt.text(mean_return + 2*std_return, plt.ylim()[1]*0.5, '2 SD', color='red')
+plt.text(mean_return - 2*std_return, plt.ylim()[1]*0.5, '-2 SD', color='blue')
+plt.text(mean_return + 3*std_return, plt.ylim()[1]*0.5, '3 SD', color='red')
+plt.text(mean_return - 3*std_return, plt.ylim()[1]*0.5, '-3 SD', color='blue')
+
+# Title and labels
+title = f"Fit results: Daily Mean = {mean_return:.2%}, Daily Std = {std_return:.2%}\n" \
+        f"Yearly Return = {yearly_return:.2%}, Yearly Std = {yearly_std:.2%}"
+plt.title(title)
+plt.xlabel('Daily Returns')
+plt.ylabel('Density')
+
+plt.show()
+
+# Shutdown MT5 connection
+mt5.shutdown()
