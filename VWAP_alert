@@ -58,7 +58,7 @@ try:
                 print(f"Failed to retrieve data for symbol: {symbol}")
             
         # Sleep for 1 minute before checking again
-        time.sleep(60)
+        time.sleep(600)
 
 except KeyboardInterrupt:
     # Shutdown MetaTrader 5 connection on interruption
