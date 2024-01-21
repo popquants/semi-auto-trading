@@ -1,0 +1,16 @@
+import yfinance as yf
+import datetime
+
+# Fetch S&P 500 index data from Yahoo Finance
+sp500 = yf.Ticker("^GSPC")
+
+# Get the date three years from today
+three_years_ago = datetime.date.today() - datetime.timedelta(days=3*365)
+
+# Fetch historical data
+data = sp500.history(start=three_years_ago, end=datetime.date.today(), interval="1d")
+
+data
+
+# Save to CSV
+data.to_csv('s&p500.csv')
