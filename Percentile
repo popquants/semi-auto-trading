@@ -1,0 +1,34 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Set a random seed for reproducibility
+np.random.seed(0)
+
+# Generate random data following a normal distribution
+mean = 0
+std_dev = 1
+num_samples = 1000
+data = np.random.normal(mean, std_dev, num_samples)
+
+print(f"Value at {specific_percentage}th percentile: {percentile_value}")
+print(f"Number of values below {specific_percentage}th percentile: {count_below_percentile}")
+
+# Create a histogram to visualize the distribution
+plt.hist(data, bins=30, density=True, alpha=0.6, color='b', label='Random Data')
+
+# Calculate the percentiles
+percentile_2_5 = np.percentile(data, 2.5)
+percentile_97_5 = np.percentile(data, 97.5)
+
+# Highlight the percentiles on the histogram
+plt.axvline(percentile_2_5, color='r', linestyle='dashed', linewidth=2, label='2.5 Percentile')
+plt.axvline(percentile_97_5, color='g', linestyle='dashed', linewidth=2, label='97.5 Percentile')
+
+# Add labels and legend
+plt.xlabel('Value')
+plt.ylabel('Probability Density')
+plt.legend(loc='upper right')
+
+# Show the plot
+plt.title('Normal Distribution with Highlighted Percentiles')
+plt.show()
