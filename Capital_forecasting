@@ -1,0 +1,46 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Parameters
+capital = 1000  # Total capital available
+number_of_trades = 100  # Number of trades to simulate
+win_rate = 0.48  # Probability of a winning trade
+average_win = 0.022  # Average percentage gain per winning trade
+average_loss = 0.019  # Average percentage loss per losing trade
+num_simulations = 10000  # Number of Monte Carlo simulations
+
+# Function to simulate one trading scenario
+def simulate_trading(capital, number_of_trades, win_rate, average_win, average_loss):
+    ending_capital = capital
+    for _ in range(number_of_trades):
+        if np.random.rand() < win_rate:
+            ending_capital += ending_capital * average_win
+        else:
+            ending_capital -= ending_capital * average_loss
+    return ending_capital
+
+# Running the Monte Carlo Simulation
+results = [simulate_trading(capital, number_of_trades, win_rate, average_win, average_loss) for _ in range(num_simulations)]
+
+# Plot the results
+plt.figure(figsize=(10, 6))
+plt.hist(results, bins=50, color='blue', alpha=0.7)
+plt.title('Monte Carlo Simulation of Trading Strategy')
+plt.xlabel('Ending Capital')
+plt.ylabel('Frequency')
+plt.axvline(x=np.mean(results), color='red', linestyle='dashed', linewidth=2)
+plt.axvline(x=np.median(results), color='green', linestyle='dashed', linewidth=2)
+plt.axvline(x=capital, color='yellow', linestyle='dashed', linewidth=2)
+plt.legend(['Mean Ending Capital', 'Median Ending Capital', 'Starting Capital'])
+plt.show()
+
+# Display results
+average_ending_capital = np.mean(results)
+median_ending_capital = np.median(results)
+max_ending_capital = np.max(results)
+min_ending_capital = np.min(results)
+
+print(f"Average Ending Capital: {average_ending_capital}")
+print(f"Median Ending Capital: {median_ending_capital}")
+print(f"Maximum Ending Capital: {max_ending_capital}")
+print(f"Minimum Ending Capital: {min_ending_capital}")
